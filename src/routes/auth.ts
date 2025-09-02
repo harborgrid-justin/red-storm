@@ -190,8 +190,8 @@ router.post('/login',
     });
 
     // Set session cookie
-    req.session.userId = user.id;
-    req.session.sessionToken = sessionToken;
+    req.session.userId as any = user.id;
+    req.session.sessionToken as any = sessionToken;
 
     sendSuccess(res, {
       user: {

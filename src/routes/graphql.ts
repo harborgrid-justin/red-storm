@@ -423,7 +423,7 @@ const apolloServer = new ApolloServer({
     req,
     res: {} as any, // Response object would be provided in a full implementation
   }),
-  playground: config.graphql.playground,
+  // playground: config.graphql.playground,
   introspection: config.graphql.introspection,
   formatError: (error) => {
     // Log GraphQL errors

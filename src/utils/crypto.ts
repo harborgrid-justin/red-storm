@@ -15,7 +15,7 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 
 // JWT token generation and verification
 export const generateAccessToken = (payload: Omit<JWTPayload, 'type' | 'iat' | 'exp'>): string => {
-  return jwt.sign(
+  return jwt.sign as any(
     { ...payload, type: 'access' },
     config.jwt.secret,
     { 
@@ -27,7 +27,7 @@ export const generateAccessToken = (payload: Omit<JWTPayload, 'type' | 'iat' | '
 };
 
 export const generateRefreshToken = (payload: Omit<JWTPayload, 'type' | 'iat' | 'exp'>): string => {
-  return jwt.sign(
+  return jwt.sign as any(
     { ...payload, type: 'refresh' },
     config.jwt.refreshSecret,
     { 
@@ -117,7 +117,7 @@ export const generateTOTP = (secret: string, window = 0): string => {
   timeBuffer.writeUInt32BE(Math.floor(time / Math.pow(2, 32)), 0);
   timeBuffer.writeUInt32BE(time % Math.pow(2, 32), 4);
   
-  const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'base32'));
+  const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'hex'));
   const digest = hmac.update(timeBuffer).digest();
   
   const offset = digest[digest.length - 1] & 0x0f;

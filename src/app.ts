@@ -56,7 +56,7 @@ export class Application {
     this.app.use(cookieParser());
 
     // Session configuration
-    const RedisStore = ConnectRedis(session);
+    const RedisStore = ConnectRedis(session) as any;
     this.app.use(session({
       store: new (RedisStore as any)({ client: redis }),
       secret: config.session.secret,
