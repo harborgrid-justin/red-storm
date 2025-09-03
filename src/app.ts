@@ -26,8 +26,14 @@ import authRoutes from '@/routes/auth';
 import userRoutes from '@/routes/users';
 import caseRoutes from '@/routes/cases';
 import evidenceRoutes from '@/routes/evidence';
+import evidenceFileRoutes from '@/routes/evidenceFiles';
 import healthRoutes from '@/routes/health';
 import graphqlRoutes from '@/routes/graphql';
+
+// Service imports
+import { fileProcessingWorker } from '@/services/backgroundJobs';
+import { scheduledJobManager } from '@/services/scheduledJobs';
+import { chainOfCustodyService } from '@/services/chainOfCustody';
 
 export class Application {
   private app: express.Application;
@@ -102,6 +108,7 @@ export class Application {
     apiRouter.use('/users', userRoutes);
     apiRouter.use('/cases', caseRoutes);
     apiRouter.use('/evidence', evidenceRoutes);
+    apiRouter.use('/evidence-files', evidenceFileRoutes);
     
     // GraphQL endpoint
     apiRouter.use('/graphql', graphqlRoutes);
@@ -122,6 +129,7 @@ export class Application {
           users: `/api/${config.apiVersion}/users`,
           cases: `/api/${config.apiVersion}/cases`,
           evidence: `/api/${config.apiVersion}/evidence`,
+          evidenceFiles: `/api/${config.apiVersion}/evidence-files`,
           graphql: `/api/${config.apiVersion}/graphql`,
         },
       });
@@ -226,9 +234,36 @@ export class Application {
       await connectDatabase();
       await connectRedis();
 
+      // Initialize background services
+      await this.initializeBackgroundServices();
+
       logger.info('Application initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize application', { error });
+      throw error;
+    }
+  }
+
+  private async initializeBackgroundServices(): Promise<void> {
+    try {
+      // Initialize file processing worker
+      logger.info('Initializing background processing worker');
+
+      // Initialize scheduled job manager
+      logger.info('Initializing scheduled job manager');
+      
+      // Initialize chain of custody service
+      logger.info('Initializing chain of custody service');
+
+      // Create uploads directory if it doesn't exist
+      const fs = await import('fs/promises');
+      const uploadsPath = process.env.UPLOAD_PATH || './uploads';
+      await fs.mkdir(uploadsPath, { recursive: true });
+      await fs.mkdir(`${uploadsPath}/temp`, { recursive: true });
+
+      logger.info('Background services initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize background services', { error });
       throw error;
     }
   }
@@ -247,6 +282,12 @@ export class Application {
 
       // Initialize WebSocket after HTTP server starts
       this.initializeWebSocket();
+
+      // Set global WebSocket server reference
+      const { setWebSocketServer } = await import('./app');
+      if (this.io) {
+        setWebSocketServer(this.io);
+      }
 
       // Graceful shutdown handling
       process.on('SIGTERM', this.gracefulShutdown.bind(this));
@@ -284,6 +325,9 @@ export class Application {
       // Close HTTP server
       await this.stop();
 
+      // Stop background services
+      await this.stopBackgroundServices();
+
       // Disconnect from external services
       await disconnectDatabase();
       await disconnectRedis();
@@ -293,6 +337,21 @@ export class Application {
     } catch (error) {
       logger.error('Error during graceful shutdown', { error });
       process.exit(1);
+    }
+  }
+
+  private async stopBackgroundServices(): Promise<void> {
+    try {
+      // Cancel scheduled jobs
+      scheduledJobManager.cancelAllJobs();
+      
+      // Close file processing queues
+      const { fileProcessingQueue } = await import('@/config/redis');
+      await fileProcessingQueue.close();
+      
+      logger.info('Background services stopped');
+    } catch (error) {
+      logger.error('Error stopping background services', { error });
     }
   }
 
@@ -338,5 +397,13 @@ export class Application {
     return this.io;
   }
 }
+
+// Global variable for WebSocket server access
+export let io: SocketIOServer | null = null;
+
+// Function to set the WebSocket server instance
+export const setWebSocketServer = (socketServer: SocketIOServer) => {
+  io = socketServer;
+};
 
 export default Application;

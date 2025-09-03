@@ -33,6 +33,8 @@ model User {
   evidenceItems     EvidenceItem[]
   assignedCases     Case[] @relation("AssignedTo")
   createdCases      Case[] @relation("CreatedBy")
+  transfersFrom     CustodyTransfer[] @relation("TransfersFrom")
+  transfersTo       CustodyTransfer[] @relation("TransfersTo")
 
   @@map("users")
 }
@@ -131,6 +133,7 @@ model EvidenceItem {
   case            Case    @relation(fields: [caseId], references: [id], onDelete: Cascade)
   collectedBy     User    @relation(fields: [collectedById], references: [id])
   tags            EvidenceTag[]
+  transfers       CustodyTransfer[]
 
   @@unique([caseId, itemNumber])
   @@map("evidence_items")
@@ -174,6 +177,33 @@ model EvidenceTag {
 
   @@unique([evidenceId, tagId])
   @@map("evidence_tags")
+}
+
+// Chain of Custody Transfer Management
+model CustodyTransfer {
+  id            String          @id @default(cuid())
+  evidenceId    String
+  fromUserId    String
+  toUserId      String
+  reason        String
+  location      String
+  status        TransferStatus  @default(PENDING_APPROVAL)
+  requestedAt   DateTime        @default(now())
+  reviewedAt    DateTime?
+  completedAt   DateTime?
+  scheduledAt   DateTime?
+  notes         String?
+  approvers     Json            // Array of user IDs
+  approvals     Json            // Array of approval objects
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  evidence      EvidenceItem    @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  fromUser      User            @relation("TransfersFrom", fields: [fromUserId], references: [id])
+  toUser        User            @relation("TransfersTo", fields: [toUserId], references: [id])
+
+  @@map("custody_transfers")
 }
 
 // Audit and Logging
@@ -240,4 +270,12 @@ enum AuditAction {
   LOGOUT
   EXPORT
   IMPORT
+}
+
+enum TransferStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
 }

@@ -154,6 +154,16 @@ src/
 - `PUT /api/v1/evidence/:id` - Update evidence item
 - `DELETE /api/v1/evidence/:id` - Delete evidence item
 
+### Evidence File Management (Phase 2)
+- `POST /api/v1/evidence-files/upload` - Upload files with metadata
+- `POST /api/v1/evidence-files/upload/s3/presigned` - Get S3 presigned URLs
+- `POST /api/v1/evidence-files/upload/chunk` - Chunked file uploads
+- `POST /api/v1/evidence-files/:id/transfer` - Request custody transfer
+- `POST /api/v1/evidence-files/transfers/:id/:action` - Approve/reject transfers
+- `POST /api/v1/evidence-files/:id/verify` - Verify file integrity
+- `GET /api/v1/evidence-files/:id/processing-status` - Check processing status
+- `GET /api/v1/evidence-files/jobs/stats` - Queue statistics (admin only)
+
 ### GraphQL
 - `POST /api/v1/graphql` - GraphQL endpoint
 - `GET /api/v1/graphql` - GraphQL playground (dev only)
@@ -281,15 +291,46 @@ The project includes Docker Compose for development:
 - pgAdmin for database management
 - Redis Commander for Redis management
 
-## 🚧 Next Steps (Phase 2+)
+## ✅ Phase 2: Evidence Ingestion & File Handling (COMPLETED)
+
+### File Upload System
+- **Multi-format File Support** with validation for images, videos, audio, documents, and archives
+- **Chunked Upload System** for large files (100MB+) using custom upload manager
+- **AWS S3/MinIO Integration** with presigned URLs for direct cloud uploads
+- **Virus Scanning** with ClamAV integration before file processing
+- **Duplicate Detection** using SHA-256 hashes and similarity matching
+- **Real-time Progress Tracking** via WebSocket notifications
+
+### Metadata Extraction & Processing
+- **EXIF Data Extraction** with GPS coordinate parsing for images
+- **Video/Audio Processing** with FFmpeg for metadata and thumbnail generation
+- **PDF Content Extraction** with full-text search capabilities
+- **Image Processing** using Sharp for resizing and format conversion
+- **Law Enforcement Format Support** with custom parsers (placeholder)
+
+### Background Processing Infrastructure
+- **Bull Queue System** for asynchronous file processing and metadata extraction
+- **Multi-worker Architecture** with cluster module for CPU-intensive operations
+- **Progress Tracking** with Redis storage and WebSocket notifications
+- **Retry Mechanisms** with exponential backoff for failed operations
+- **Scheduled Maintenance** using node-cron for cleanup and integrity checks
+
+### Enhanced Chain of Custody
+- **Digital Signatures** using RSA key pairs for tamper-proof audit trails
+- **Multi-party Approval Workflows** for custody transfers with email notifications
+- **Integrity Verification** endpoints with cryptographic hash comparison
+- **Immutable Audit Trail** using PostgreSQL JSONB columns
+- **Automated Alerts** via SMTP for custody changes and violations
+
+## 🚧 Next Steps (Phase 3+)
 
 - [ ] Complete microservices architecture
-- [ ] File upload and processing system
+- [x] ~~File upload and processing system~~ ✅ **COMPLETED**
 - [ ] Advanced search and analytics
 - [ ] SAML/OAuth2 integration
 - [ ] API rate limiting enhancements
 - [ ] TimescaleDB for time-series data
-- [ ] Advanced audit and compliance features
+- [x] ~~Advanced audit and compliance features~~ ✅ **COMPLETED**
 - [ ] Mobile API optimizations
 
 ## 📄 License

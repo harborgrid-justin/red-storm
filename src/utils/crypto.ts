@@ -15,7 +15,7 @@ export const comparePassword = async (password: string, hash: string): Promise<b
 
 // JWT token generation and verification
 export const generateAccessToken = (payload: Omit<JWTPayload, 'type' | 'iat' | 'exp'>): string => {
-  return jwt.sign as any(
+  return (jwt.sign as any)(
     { ...payload, type: 'access' },
     config.jwt.secret,
     { 
@@ -27,7 +27,7 @@ export const generateAccessToken = (payload: Omit<JWTPayload, 'type' | 'iat' | '
 };
 
 export const generateRefreshToken = (payload: Omit<JWTPayload, 'type' | 'iat' | 'exp'>): string => {
-  return jwt.sign as any(
+  return (jwt.sign as any)(
     { ...payload, type: 'refresh' },
     config.jwt.refreshSecret,
     { 

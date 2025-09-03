@@ -23,6 +23,7 @@ export interface JWTPayload extends JwtPayload {
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
   correlationId?: string;
+  apiVersion?: string;
   log?: any;
 }
 
@@ -279,4 +280,221 @@ export interface ProcessedFile {
   checksumMd5: string;
   checksumSha256: string;
   metadata?: Record<string, any>;
+}
+
+// File Processing types
+export interface FileProcessingStatus {
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  startTime?: Date;
+  endTime?: Date;
+  errors?: string[];
+}
+
+export interface ExifData {
+  dateTime?: string;
+  gps?: {
+    latitude: number;
+    longitude: number;
+    altitude?: number;
+  };
+  camera?: {
+    make: string;
+    model?: string;
+    software?: string;
+  };
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+}
+
+export interface MediaMetadata {
+  duration: number;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  thumbnails?: string[];
+  format?: string;
+  codec?: string;
+  bitrate?: number;
+}
+
+export interface DocumentMetadata {
+  pages: number;
+  extractedText?: string;
+  author?: string;
+  title?: string;
+  creationDate?: Date;
+  modificationDate?: Date;
+}
+
+export interface VirusScanResult {
+  clean: boolean;
+  scanTime: Date;
+  engine: string;
+  threats?: string[];
+  signature?: string;
+}
+
+// Chain of Custody types
+export interface ChainOfCustodyEntry {
+  id: string;
+  action: string;
+  userId: string;
+  timestamp: string;
+  location: string;
+  notes: string;
+  digitalSignature?: string;
+  metadata?: any;
+  integrityCheck?: {
+    hash: string;
+    algorithm: string;
+    verified: boolean;
+    timestamp: string;
+  };
+}
+
+export interface CustodyTransferRequest {
+  evidenceId: string;
+  fromUserId: string;
+  toUserId: string;
+  reason: string;
+  location: string;
+  approvalRequired: boolean;
+  approvers?: string[];
+  scheduledAt?: Date;
+  notes?: string;
+}
+
+export interface CustodyApproval {
+  userId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  timestamp?: string;
+  notes?: string;
+  digitalSignature?: string;
+}
+
+export interface IntegrityVerificationResult {
+  evidenceId: string;
+  verified: boolean;
+  currentHash: string;
+  originalHash: string;
+  algorithm: string;
+  verifiedAt: Date;
+  discrepancies?: string[];
+}
+
+// Background Job types
+export interface FileProcessingJobData {
+  evidenceId: string;
+  filePath: string;
+  originalFilename: string;
+  mimetype: string;
+  size: number;
+  userId: string;
+  caseId: string;
+}
+
+export interface ChainOfCustodyJobData {
+  evidenceId: string;
+  action: string;
+  userId: string;
+  location?: string;
+  notes?: string;
+  metadata?: any;
+}
+
+export interface FileCleanupJobData {
+  olderThan: Date;
+  types: string[];
+}
+
+// Upload types
+export interface ChunkedUploadInfo {
+  uploadId: string;
+  chunkIndex: number;
+  totalChunks: number;
+  chunkSize: number;
+  totalSize: number;
+  filename: string;
+  mimetype: string;
+}
+
+export interface PresignedUrlRequest {
+  filename: string;
+  contentType: string;
+  size: number;
+  evidenceId?: string;
+}
+
+export interface PresignedUrlResponse {
+  uploadUrl: string;
+  key: string;
+  expiresIn: number;
+  maxSize: number;
+}
+
+// AWS/S3 Configuration types
+export interface AWSConfig {
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  bucketName?: string;
+}
+
+export interface EmailConfig {
+  host?: string;
+  port?: number;
+  secure: boolean;
+  auth: {
+    user?: string;
+    pass?: string;
+  };
+  from?: string;
+}
+
+export interface UploadConfig {
+  maxFileSize: number;
+  uploadPath: string;
+}
+
+// Notification types
+export interface CustodyAlert {
+  evidenceId: string;
+  caseNumber: string;
+  action: string;
+  user: string;
+  timestamp: Date;
+  location: string;
+  notes?: string;
+  recipients: string[];
+}
+
+export interface ProcessingNotification {
+  evidenceId: string;
+  caseId: string;
+  status: 'started' | 'completed' | 'failed';
+  progress?: number;
+  metadata?: any;
+  error?: string;
+}
+
+// Job Statistics types
+export interface JobStats {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  total: number;
+}
+
+// Scheduled Job types
+export interface ScheduledJobStatus {
+  name: string;
+  nextInvocation?: string;
+  running: boolean;
+  lastRun?: string;
+  lastResult?: 'success' | 'failure';
 }
