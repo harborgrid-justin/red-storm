@@ -5,7 +5,7 @@ import { nanoid } from 'nanoid'
 const protectedRoutes = [
   '/dashboard',
   '/cases',
-  '/evidence',
+  // '/evidence', // Temporarily allow for demo
   '/users',
   '/settings',
 ]
@@ -13,6 +13,7 @@ const protectedRoutes = [
 // Define public routes that don't require authentication
 const publicRoutes = [
   '/login',
+  '/evidence', // Temporarily allow for demo
   '/api/auth',
   '/health',
 ]
