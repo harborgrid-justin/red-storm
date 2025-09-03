@@ -27,6 +27,7 @@ import userRoutes from '@/routes/users';
 import caseRoutes from '@/routes/cases';
 import evidenceRoutes from '@/routes/evidence';
 import evidenceFileRoutes from '@/routes/evidenceFiles';
+import workflowRoutes from '@/routes/workflows';
 import healthRoutes from '@/routes/health';
 import graphqlRoutes from '@/routes/graphql';
 
@@ -108,6 +109,7 @@ export class Application {
     apiRouter.use('/cases', caseRoutes);
     apiRouter.use('/evidence', evidenceRoutes);
     apiRouter.use('/evidence-files', evidenceFileRoutes);
+    apiRouter.use('/workflows', workflowRoutes);
     
     // GraphQL endpoint
     apiRouter.use('/graphql', graphqlRoutes);
