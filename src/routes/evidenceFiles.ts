@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { validateBody, validateParams, validateQuery, evidenceSchemas } from '../middleware/validation';
-import { verifyToken, requirePermissions } from '../middleware/auth';
+import { verifyToken, requirePermission } from '../middleware/auth';
 import { uploadRateLimiter } from '../middleware/security';
 import { evidenceUpload, s3EvidenceUpload, handleUploadError, generatePresignedUrl, chunkedUploadManager } from '../middleware/upload';
 import { fileProcessingWorker, FileProcessingWorker } from '../services/backgroundJobs';
@@ -54,7 +54,7 @@ const integrityVerificationSchema = z.object({
 // Upload evidence file with metadata
 router.post('/upload',
   verifyToken,
-  requirePermissions(['evidence:create']),
+  requirePermission(['evidence:create']),
   uploadRateLimiter,
   evidenceUpload.array('files', 10),
   handleUploadError,
@@ -93,7 +93,15 @@ router.post('/upload',
         }
       }
 
-      const evidenceItems = [];
+      const evidenceItems: Array<{
+        id: string;
+        itemNumber: string;
+        title: string;
+        filename: string;
+        size: number;
+        hash: string;
+        processingStatus: string;
+      }> = [];
 
       // Process each uploaded file
       for (let i = 0; i < files.length; i++) {
@@ -233,7 +241,7 @@ router.post('/upload',
 // S3 direct upload with presigned URL
 router.post('/upload/s3/presigned',
   verifyToken,
-  requirePermissions(['evidence:create']),
+  requirePermission(['evidence:create']),
   uploadRateLimiter,
   validateBody(z.object({
     filename: z.string(),
@@ -275,7 +283,7 @@ router.post('/upload/s3/presigned',
 // Chunked file upload for large files
 router.post('/upload/chunk',
   verifyToken,
-  requirePermissions(['evidence:create']),
+  requirePermission(['evidence:create']),
   uploadRateLimiter,
   evidenceUpload.single('chunk'),
   handleUploadError,
@@ -417,7 +425,7 @@ router.post('/upload/chunk',
 // Transfer custody of evidence
 router.post('/:id/transfer',
   verifyToken,
-  requirePermissions(['evidence:transfer']),
+  requirePermission(['evidence:transfer']),
   validateParams(z.object({ id: z.string().cuid() })),
   validateBody(custodyTransferSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -483,7 +491,7 @@ router.post('/:id/transfer',
 // Approve or reject custody transfer
 router.post('/transfers/:transferId/:action',
   verifyToken,
-  requirePermissions(['evidence:approve']),
+  requirePermission(['evidence:approve']),
   validateParams(z.object({
     transferId: z.string().cuid(),
     action: z.enum(['approve', 'reject']),
@@ -525,7 +533,7 @@ router.post('/transfers/:transferId/:action',
 // Verify evidence integrity
 router.post('/:id/verify',
   verifyToken,
-  requirePermissions(['evidence:verify']),
+  requirePermission(['evidence:verify']),
   validateParams(z.object({ id: z.string().cuid() })),
   validateBody(integrityVerificationSchema),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
@@ -569,7 +577,7 @@ router.post('/:id/verify',
 // Get file processing status
 router.get('/:id/processing-status',
   verifyToken,
-  requirePermissions(['evidence:read']),
+  requirePermission(['evidence:read']),
   validateParams(z.object({ id: z.string().cuid() })),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { id: evidenceId } = req.params;
@@ -607,7 +615,7 @@ router.get('/:id/processing-status',
 // Get job queue statistics
 router.get('/jobs/stats',
   verifyToken,
-  requirePermissions(['admin']),
+  requirePermission(['admin']),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     try {
       const stats = await FileProcessingWorker.getJobStats();

@@ -1,7 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import ConnectRedis from 'connect-redis';
+import RedisStore from 'connect-redis';
 import { Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { config } from '@/config';
@@ -62,9 +62,8 @@ export class Application {
     this.app.use(cookieParser());
 
     // Session configuration
-    const RedisStore = ConnectRedis(session) as any;
     this.app.use(session({
-      store: new (RedisStore as any)({ client: redis }),
+      store: new RedisStore({ client: redis }),
       secret: config.session.secret,
       resave: false,
       saveUninitialized: false,

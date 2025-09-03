@@ -277,8 +277,8 @@ export class FileProcessingWorker {
       const oldEvidence = await prisma.evidenceItem.findMany({
         where: {
           createdAt: { lt: olderThan },
-          status: 'ARCHIVED',
-          type: { in: types },
+          status: 'ARCHIVED' as any,
+          type: { in: types as any },
         },
         select: {
           id: true,

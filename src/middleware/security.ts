@@ -68,12 +68,19 @@ export const rateLimiter = rateLimit({
     // Use user ID if authenticated, otherwise IP
     return req.user?.id || req.ip || 'unknown';
   },
-  onLimitReached: (req: AuthenticatedRequest) => {
+  handler: (req: AuthenticatedRequest, res: Response) => {
     logger.warn('Rate limit exceeded', {
       userId: req.user?.id,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       correlationId: req.correlationId,
+    });
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests, please try again later',
+      },
     });
   },
 });
@@ -93,11 +100,18 @@ export const authRateLimiter = rateLimit({
   legacyHeaders: false,
   store: new RedisStore(redis, 'auth_limit:'),
   keyGenerator: (req: AuthenticatedRequest) => req.ip || 'unknown',
-  onLimitReached: (req: AuthenticatedRequest) => {
+  handler: (req: AuthenticatedRequest, res: Response) => {
     logger.warn('Auth rate limit exceeded', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       correlationId: req.correlationId,
+    });
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'AUTH_RATE_LIMIT_EXCEEDED',
+        message: 'Too many authentication attempts, please try again later',
+      },
     });
   },
 });
@@ -220,13 +234,14 @@ export const requestSizeLimit = (maxSize = '10mb') => {
         correlationId: req.correlationId,
       });
       
-      return res.status(413).json({
+      res.status(413).json({
         success: false,
         error: {
           code: 'REQUEST_TOO_LARGE',
           message: 'Request entity too large',
         },
       });
+      return;
     }
     
     next();

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ApolloServer } from 'apollo-server-express';
 import { gql } from 'apollo-server-express';
+import { Prisma } from '@prisma/client';
 import { GraphQLContext, AuthenticatedRequest } from '@/types';
 import { auth } from '@/middleware/auth';
 import { prisma } from '@/config/database';
@@ -202,9 +203,9 @@ const resolvers = {
 
       const where = search ? {
         OR: [
-          { email: { contains: search, mode: 'insensitive' } },
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { firstName: { contains: search, mode: Prisma.QueryMode.insensitive } },
+          { lastName: { contains: search, mode: Prisma.QueryMode.insensitive } },
         ],
       } : {};
 
@@ -350,7 +351,7 @@ const resolvers = {
       }
 
       const where = search ? {
-        name: { contains: search, mode: 'insensitive' },
+        name: { contains: search, mode: Prisma.QueryMode.insensitive },
       } : {};
 
       return await prisma.tag.findMany({

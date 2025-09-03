@@ -274,6 +274,8 @@ async function main() {
       update: {},
       create: {
         ...evidence,
+        type: evidence.type as any,
+        status: evidence.status as any,
         caseId: sampleCase.id,
         collectedById: investigatorUser.id,
         collectedAt: new Date(),
