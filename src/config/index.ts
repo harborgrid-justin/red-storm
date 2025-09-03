@@ -57,6 +57,20 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(10485760), // 10MB
   UPLOAD_PATH: z.string().default('./uploads'),
   
+  // AWS/S3 Configuration
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_S3_BUCKET: z.string().optional(),
+  
+  // Email/SMTP Configuration
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
+  
   // GraphQL
   GRAPHQL_PLAYGROUND: z.coerce.boolean().default(true),
   GRAPHQL_INTROSPECTION: z.coerce.boolean().default(true),
@@ -134,6 +148,24 @@ export const config = {
   upload: {
     maxFileSize: env.MAX_FILE_SIZE,
     uploadPath: env.UPLOAD_PATH,
+  },
+  
+  aws: {
+    region: env.AWS_REGION,
+    accessKeyId: env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+    bucketName: env.AWS_S3_BUCKET,
+  },
+  
+  email: {
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_SECURE,
+    auth: {
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS,
+    },
+    from: env.SMTP_FROM,
   },
   
   graphql: {
