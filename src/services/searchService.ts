@@ -300,21 +300,19 @@ export class ElasticsearchService {
       if (!exists) {
         await this.client.indices.create({
           index: indexName,
-          body: {
-            settings: {
-              number_of_shards: 1,
-              number_of_replicas: 0,
-              analysis: {
-                analyzer: {
-                  standard: {
-                    type: 'standard',
-                    stopwords: '_english_',
-                  },
+          settings: {
+            number_of_shards: 1,
+            number_of_replicas: 0,
+            analysis: {
+              analyzer: {
+                standard: {
+                  type: 'standard',
+                  stopwords: '_english_',
                 },
               },
             },
-            mappings: mapping,
           },
+          mappings: mapping,
         });
         
         logger.info(`Created Elasticsearch index: ${indexName}`);
@@ -341,7 +339,7 @@ export class ElasticsearchService {
       await this.client.index({
         index: indexName,
         id: document.id,
-        body: document,
+        document: document,
         refresh: 'wait_for',
       });
 
@@ -375,10 +373,10 @@ export class ElasticsearchService {
 
       const response = await this.client.search({
         index: indices,
-        body: query,
+        ...query,
       });
 
-      return this.transformSearchResponse(response.body);
+      return this.transformSearchResponse(response);
     } catch (error) {
       logger.error('Elasticsearch search failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -580,25 +578,25 @@ export class ElasticsearchService {
           this.getIndexName('evidence'),
           this.getIndexName('documents'),
         ],
-        body: {
-          suggest: {
-            title_suggest: {
-              prefix: text,
-              completion: {
-                field: 'title.suggest',
-                size,
-                skip_duplicates: true,
-              },
+        suggest: {
+          title_suggest: {
+            prefix: text,
+            completion: {
+              field: 'title.suggest',
+              size,
+              skip_duplicates: true,
             },
           },
         },
       });
 
       const suggestions: string[] = [];
-      if (response.body.suggest?.title_suggest) {
-        for (const suggestion of response.body.suggest.title_suggest) {
-          for (const option of suggestion.options) {
-            suggestions.push(option.text);
+      if (response.suggest?.title_suggest) {
+        for (const suggestion of response.suggest.title_suggest) {
+          if (Array.isArray(suggestion.options)) {
+            for (const option of suggestion.options) {
+              suggestions.push(option.text);
+            }
           }
         }
       }
@@ -650,9 +648,7 @@ export class ElasticsearchService {
       await this.client.update({
         index: indexName,
         id,
-        body: {
-          doc: document,
-        },
+        doc: document,
         refresh: 'wait_for',
       });
 
@@ -697,7 +693,11 @@ export class ElasticsearchService {
     const cases = await prisma.case.findMany({
       include: {
         assignedTo: true,
-        tags: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
     });
 
@@ -709,14 +709,11 @@ export class ElasticsearchService {
         description: case_.description || undefined,
         metadata: {
           caseNumber: case_.caseNumber,
-          department: case_.department,
-          jurisdiction: case_.jurisdiction,
-          leadInvestigator: case_.leadInvestigator,
         },
         status: case_.status,
         priority: case_.priority,
         assignedTo: case_.assignedTo?.id,
-        tags: case_.tags.map(t => t.name),
+        tags: case_.tags.map(t => t.tag.name),
         createdAt: case_.createdAt,
         updatedAt: case_.updatedAt,
       };
@@ -731,33 +728,40 @@ export class ElasticsearchService {
     const evidence = await prisma.evidenceItem.findMany({
       include: {
         case: true,
-        tags: true,
-        files: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        collectedBy: true,
       },
     });
 
     for (const item of evidence) {
+      const metadata = item.metadata as any;
       const document: IndexDocument = {
         id: item.id,
         type: 'evidence',
-        title: item.name,
+        title: item.title,
         description: item.description || undefined,
+        content: [
+          metadata?.fileProcessing?.extractedText,
+          metadata?.ocr?.text,
+          metadata?.transcription,
+        ]
+          .filter(Boolean)
+          .join(' '),
         metadata: {
           evidenceType: item.type,
           location: item.location,
-          collectedBy: item.collectedBy,
+          collectedBy: item.collectedBy.email,
           collectedAt: item.collectedAt,
           chainOfCustody: item.chainOfCustody,
-          files: item.files.map(f => ({
-            fileName: f.fileName,
-            fileSize: f.fileSize,
-            mimeType: f.mimeType,
-            hash: f.hash,
-          })),
+          itemNumber: item.itemNumber,
         },
         caseId: item.caseId,
         status: item.status,
-        tags: item.tags.map(t => t.name),
+        tags: item.tags.map(t => t.tag.name),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
       };

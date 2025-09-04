@@ -555,7 +555,17 @@ export class FileProcessingWorker {
     try {
       await job.progress(10);
 
-      if (!OCRService.isImageFile(mimetype)) {
+      // Check if this is an image file type
+      const isImageType = [
+        'image/jpeg',
+        'image/png', 
+        'image/tiff',
+        'image/bmp',
+        'image/gif',
+        'image/webp'
+      ].includes(mimetype);
+      
+      if (!isImageType) {
         throw new Error(`File type ${mimetype} is not suitable for OCR`);
       }
 

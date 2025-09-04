@@ -9,6 +9,7 @@ import { logger, correlationIdMiddleware, requestLoggingMiddleware } from '@/con
 import { redis } from '@/config/redis';
 import { connectDatabase, disconnectDatabase } from '@/config/database';
 import { connectRedis, disconnectRedis } from '@/config/redis';
+import { initializeElasticsearch, closeElasticsearch } from '@/config/elasticsearch';
 
 // Middleware imports
 import { errorHandler, notFoundHandler } from '@/middleware/error';
@@ -29,6 +30,7 @@ import evidenceRoutes from '@/routes/evidence';
 import evidenceFileRoutes from '@/routes/evidenceFiles';
 import workflowRoutes from '@/routes/workflows';
 import notificationRoutes from '@/routes/notifications';
+import searchRoutes from '@/routes/search';
 import healthRoutes from '@/routes/health';
 import graphqlRoutes from '@/routes/graphql';
 
@@ -112,6 +114,7 @@ export class Application {
     apiRouter.use('/evidence-files', evidenceFileRoutes);
     apiRouter.use('/workflows', workflowRoutes);
     apiRouter.use('/notifications', notificationRoutes);
+    apiRouter.use('/search', searchRoutes);
     
     // GraphQL endpoint
     apiRouter.use('/graphql', graphqlRoutes);
@@ -133,6 +136,7 @@ export class Application {
           cases: `/api/${config.apiVersion}/cases`,
           evidence: `/api/${config.apiVersion}/evidence`,
           evidenceFiles: `/api/${config.apiVersion}/evidence-files`,
+          search: `/api/${config.apiVersion}/search`,
           graphql: `/api/${config.apiVersion}/graphql`,
         },
       });
@@ -249,6 +253,15 @@ export class Application {
 
   private async initializeBackgroundServices(): Promise<void> {
     try {
+      // Initialize Elasticsearch
+      logger.info('Initializing Elasticsearch connection');
+      await initializeElasticsearch();
+
+      // Initialize search indices
+      logger.info('Initializing search indices');
+      const { elasticsearchService } = await import('@/services/searchService');
+      await elasticsearchService.initializeIndices();
+
       // Initialize file processing worker
       logger.info('Initializing background processing worker');
 
@@ -263,6 +276,9 @@ export class Application {
       const uploadsPath = process.env.UPLOAD_PATH || './uploads';
       await fs.mkdir(uploadsPath, { recursive: true });
       await fs.mkdir(`${uploadsPath}/temp`, { recursive: true });
+
+      // Create exports directory for search exports
+      await fs.mkdir('./exports', { recursive: true });
 
       logger.info('Background services initialized successfully');
     } catch (error) {
@@ -334,6 +350,7 @@ export class Application {
       // Disconnect from external services
       await disconnectDatabase();
       await disconnectRedis();
+      await closeElasticsearch();
 
       logger.info('Graceful shutdown completed');
       process.exit(0);
@@ -345,6 +362,9 @@ export class Application {
 
   private async stopBackgroundServices(): Promise<void> {
     try {
+      // Close Elasticsearch connection
+      await closeElasticsearch();
+      
       // Cancel scheduled jobs
       scheduledJobManager.cancelAllJobs();
       

@@ -57,9 +57,7 @@ export class OCRService {
     }
 
     try {
-      this.worker = await createWorker();
-      await this.worker.loadLanguage('eng');
-      await this.worker.initialize('eng');
+      this.worker = await createWorker('eng');
       
       this.isInitialized = true;
       logger.info('OCR service initialized successfully');
@@ -107,36 +105,9 @@ export class OCRService {
       const result: OCRResult = {
         text: data.text,
         confidence: data.confidence,
-        words: data.words.map(word => ({
-          text: word.text,
-          confidence: word.confidence,
-          bbox: {
-            x0: word.bbox.x0,
-            y0: word.bbox.y0,
-            x1: word.bbox.x1,
-            y1: word.bbox.y1,
-          },
-        })),
-        lines: data.lines.map(line => ({
-          text: line.text,
-          confidence: line.confidence,
-          bbox: {
-            x0: line.bbox.x0,
-            y0: line.bbox.y0,
-            x1: line.bbox.x1,
-            y1: line.bbox.y1,
-          },
-        })),
-        paragraphs: data.paragraphs.map(paragraph => ({
-          text: paragraph.text,
-          confidence: paragraph.confidence,
-          bbox: {
-            x0: paragraph.bbox.x0,
-            y0: paragraph.bbox.y0,
-            x1: paragraph.bbox.x1,
-            y1: paragraph.bbox.y1,
-          },
-        })),
+        words: [],
+        lines: [],
+        paragraphs: [],
       };
 
       logger.info('OCR processing completed', {
@@ -194,8 +165,7 @@ export class OCRService {
     }
 
     try {
-      await this.worker.loadLanguage(language);
-      await this.worker.initialize(language);
+      await this.worker.reinitialize(language);
       
       logger.info('OCR language loaded', { language });
     } catch (error) {

@@ -76,15 +76,15 @@ export class SimilaritySearchService {
     threshold: number,
     maxResults: number
   ): Promise<SimilarityResult[]> {
-    // Get all evidence items with text content
-    const evidenceItems = await prisma.evidenceItem.findMany({
-      where: {
-        OR: [
-          { metadata: { path: ['fileProcessing', 'extractedText'], not: null } },
-          { metadata: { path: ['ocr', 'text'], not: null } },
-          { metadata: { path: ['transcription'], not: null } },
-        ],
-      },
+    // Get all evidence items - we'll filter in application logic
+    const evidenceItems = await prisma.evidenceItem.findMany();
+
+    // Filter evidence items that have text content
+    const textEvidenceItems = evidenceItems.filter(item => {
+      const metadata = item.metadata as any;
+      return metadata?.fileProcessing?.extractedText || 
+             metadata?.ocr?.text || 
+             metadata?.transcription;
     });
 
     // Prepare corpus
@@ -94,7 +94,7 @@ export class SimilaritySearchService {
     documents.push({ id: 'query', text, metadata: {} });
 
     // Add evidence texts
-    for (const item of evidenceItems) {
+    for (const item of textEvidenceItems) {
       const metadata = item.metadata as any;
       const combinedText = [
         metadata?.fileProcessing?.extractedText,
@@ -152,15 +152,7 @@ export class SimilaritySearchService {
     threshold: number,
     maxResults: number
   ): Promise<SimilarityResult[]> {
-    const evidenceItems = await prisma.evidenceItem.findMany({
-      where: {
-        OR: [
-          { metadata: { path: ['fileProcessing', 'extractedText'], not: null } },
-          { metadata: { path: ['ocr', 'text'], not: null } },
-          { metadata: { path: ['transcription'], not: null } },
-        ],
-      },
-    });
+    const evidenceItems = await prisma.evidenceItem.findMany();
 
     const queryTokens = new Set(natural.WordTokenizer.prototype.tokenize(text.toLowerCase()));
     const similarities: SimilarityResult[] = [];
@@ -177,8 +169,12 @@ export class SimilaritySearchService {
 
       if (combinedText.trim()) {
         const docTokens = new Set(natural.WordTokenizer.prototype.tokenize(combinedText.toLowerCase()));
-        const jaccard = natural.JaccardDistance(queryTokens, docTokens, true);
-        const similarity = 1 - jaccard;
+        
+        // Calculate Jaccard similarity manually
+        const intersection = new Set([...queryTokens].filter(x => docTokens.has(x)));
+        const union = new Set([...queryTokens, ...docTokens]);
+        const jaccard = intersection.size / union.size;
+        const similarity = jaccard;
 
         if (similarity >= threshold) {
           similarities.push({
@@ -206,50 +202,40 @@ export class SimilaritySearchService {
     threshold: number,
     maxResults: number
   ): Promise<SimilarityResult[]> {
-    const evidenceItems = await prisma.evidenceItem.findMany({
-      include: {
-        files: {
-          where: {
-            OR: [
-              { extractedText: { not: null } },
-              { ocrText: { not: null } },
-              { transcription: { not: null } },
-            ],
-          },
-        },
-      },
-    });
+    const evidenceItems = await prisma.evidenceItem.findMany();
 
     const queryTokens = new Set(natural.WordTokenizer.prototype.tokenize(text.toLowerCase()));
     const similarities: SimilarityResult[] = [];
 
     for (const item of evidenceItems) {
-      for (const file of item.files) {
-        const combinedText = [
-          file.extractedText,
-          file.ocrText,
-          file.transcription,
-        ]
-          .filter(Boolean)
-          .join(' ');
+      const metadata = item.metadata as any;
+      const combinedText = [
+        metadata?.fileProcessing?.extractedText,
+        metadata?.ocr?.text,
+        metadata?.transcription,
+      ]
+        .filter(Boolean)
+        .join(' ');
 
-        if (combinedText.trim()) {
-          const docTokens = new Set(natural.WordTokenizer.prototype.tokenize(combinedText.toLowerCase()));
-          const dice = natural.DiceCoefficient(queryTokens, docTokens);
+      if (combinedText.trim()) {
+        const docTokens = new Set(natural.WordTokenizer.prototype.tokenize(combinedText.toLowerCase()));
+        
+        // Calculate Dice coefficient manually
+        const intersection = new Set([...queryTokens].filter(x => docTokens.has(x)));
+        const dice = (2 * intersection.size) / (queryTokens.size + docTokens.size);
 
-          if (dice >= threshold) {
-            similarities.push({
-              id: file.id,
-              score: dice,
-              type: 'text',
-              metadata: {
-                evidenceId: item.id,
-                fileName: file.fileName,
-                mimeType: file.mimeType,
-                caseId: item.caseId,
-              },
-            });
-          }
+        if (dice >= threshold) {
+          similarities.push({
+            id: item.id,
+            score: dice,
+            type: 'text',
+            metadata: {
+              evidenceId: item.id,
+              title: item.title,
+              type: item.type,
+              caseId: item.caseId,
+            },
+          });
         }
       }
     }
@@ -264,50 +250,37 @@ export class SimilaritySearchService {
     threshold: number,
     maxResults: number
   ): Promise<SimilarityResult[]> {
-    const evidenceItems = await prisma.evidenceItem.findMany({
-      include: {
-        files: {
-          where: {
-            OR: [
-              { extractedText: { not: null } },
-              { ocrText: { not: null } },
-              { transcription: { not: null } },
-            ],
-          },
-        },
-      },
-    });
+    const evidenceItems = await prisma.evidenceItem.findMany();
 
     const similarities: SimilarityResult[] = [];
 
     for (const item of evidenceItems) {
-      for (const file of item.files) {
-        const combinedText = [
-          file.extractedText,
-          file.ocrText,
-          file.transcription,
-        ]
-          .filter(Boolean)
-          .join(' ');
+      const metadata = item.metadata as any;
+      const combinedText = [
+        metadata?.fileProcessing?.extractedText,
+        metadata?.ocr?.text,
+        metadata?.transcription,
+      ]
+        .filter(Boolean)
+        .join(' ');
 
-        if (combinedText.trim()) {
-          const distance = natural.LevenshteinDistance(text.toLowerCase(), combinedText.toLowerCase());
-          const maxLength = Math.max(text.length, combinedText.length);
-          const similarity = 1 - (distance / maxLength);
+      if (combinedText.trim()) {
+        const distance = natural.LevenshteinDistance(text.toLowerCase(), combinedText.toLowerCase());
+        const maxLength = Math.max(text.length, combinedText.length);
+        const similarity = 1 - (distance / maxLength);
 
-          if (similarity >= threshold) {
-            similarities.push({
-              id: file.id,
-              score: similarity,
-              type: 'text',
-              metadata: {
-                evidenceId: item.id,
-                fileName: file.fileName,
-                mimeType: file.mimeType,
-                caseId: item.caseId,
-              },
-            });
-          }
+        if (similarity >= threshold) {
+          similarities.push({
+            id: item.id,
+            score: similarity,
+            type: 'text',
+            metadata: {
+              evidenceId: item.id,
+              title: item.title,
+              type: item.type,
+              caseId: item.caseId,
+            },
+          });
         }
       }
     }
@@ -330,26 +303,27 @@ export class SimilaritySearchService {
 
     try {
       const queryHash = await this.generateImageHashes(imagePath);
-      const imageFiles = await prisma.evidenceFile.findMany({
+      const imageEvidence = await prisma.evidenceItem.findMany({
         where: {
-          mimeType: {
-            startsWith: 'image/',
-          },
-          imageHashes: {
-            not: null,
-          },
+          filePath: { not: null },
         },
-        include: {
-          evidence: true,
-        },
+      });
+
+      // Filter for images with hashes in application logic
+      const imageEvidenceWithHashes = imageEvidence.filter(evidence => {
+        const metadata = evidence.metadata as any;
+        return metadata?.fileProcessing?.mimetype?.startsWith('image/') && 
+               metadata?.imageHashes;
       });
 
       const similarities: SimilarityResult[] = [];
 
-      for (const file of imageFiles) {
-        if (!file.imageHashes) continue;
+      for (const evidence of imageEvidenceWithHashes) {
+        const metadata = evidence.metadata as any;
+        const storedHashes = metadata?.imageHashes;
+        
+        if (!storedHashes) continue;
 
-        const storedHashes = JSON.parse(file.imageHashes as string) as ImageHash;
         let similarity = 0;
 
         switch (hashType) {
@@ -368,14 +342,14 @@ export class SimilaritySearchService {
 
         if (similarity >= threshold) {
           similarities.push({
-            id: file.id,
+            id: evidence.id,
             score: similarity,
             type: 'image',
             metadata: {
-              evidenceId: file.evidenceId,
-              fileName: file.fileName,
-              mimeType: file.mimeType,
-              caseId: file.evidence?.caseId,
+              evidenceId: evidence.id,
+              title: evidence.title,
+              type: evidence.type,
+              caseId: evidence.caseId,
             },
           });
         }
@@ -453,40 +427,42 @@ export class SimilaritySearchService {
       // For now, we'll use a placeholder implementation
       const audioFingerprint = await this.generateAudioFingerprint(audioPath);
       
-      const audioFiles = await prisma.evidenceFile.findMany({
+      const audioEvidence = await prisma.evidenceItem.findMany({
         where: {
-          mimeType: {
-            startsWith: 'audio/',
-          },
-          audioFingerprint: {
-            not: null,
-          },
+          filePath: { not: null },
         },
-        include: {
-          evidence: true,
-        },
+      });
+
+      // Filter for audio files with fingerprints in application logic
+      const audioEvidenceWithFingerprints = audioEvidence.filter(evidence => {
+        const metadata = evidence.metadata as any;
+        return metadata?.fileProcessing?.mimetype?.startsWith('audio/') && 
+               metadata?.audioFingerprint;
       });
 
       const similarities: SimilarityResult[] = [];
 
-      for (const file of audioFiles) {
-        if (!file.audioFingerprint) continue;
+      for (const evidence of audioEvidenceWithFingerprints) {
+        const metadata = evidence.metadata as any;
+        const storedFingerprint = metadata?.audioFingerprint;
+        
+        if (!storedFingerprint) continue;
 
         const similarity = this.compareAudioFingerprints(
           audioFingerprint,
-          file.audioFingerprint
+          storedFingerprint
         );
 
         if (similarity >= threshold) {
           similarities.push({
-            id: file.id,
+            id: evidence.id,
             score: similarity,
             type: 'audio',
             metadata: {
-              evidenceId: file.evidenceId,
-              fileName: file.fileName,
-              mimeType: file.mimeType,
-              caseId: file.evidence?.caseId,
+              evidenceId: evidence.id,
+              title: evidence.title,
+              type: evidence.type,
+              caseId: evidence.caseId,
             },
           });
         }
@@ -532,7 +508,6 @@ export class SimilaritySearchService {
       const evidence = await prisma.evidenceItem.findUnique({
         where: { id: evidenceId },
         include: {
-          files: true,
           case: true,
         },
       });
@@ -549,72 +524,75 @@ export class SimilaritySearchService {
         details: Record<string, any>;
       }> = [];
 
-      // Find correlations across different cases
-      for (const file of evidence.files) {
-        if (file.extractedText || file.ocrText || file.transcription) {
-          const textContent = [file.extractedText, file.ocrText, file.transcription]
-            .filter(Boolean)
-            .join(' ');
+      const metadata = evidence.metadata as any;
 
-          const textSimilarities = await this.findSimilarText(textContent, {
+      // Find text correlations
+      const textContent = [
+        metadata?.fileProcessing?.extractedText,
+        metadata?.ocr?.text,
+        metadata?.transcription,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      if (textContent.trim()) {
+        const textSimilarities = await this.findSimilarText(textContent, {
+          threshold,
+          maxResults: 20,
+        });
+
+        for (const similarity of textSimilarities) {
+          const relatedEvidence = await prisma.evidenceItem.findUnique({
+            where: { id: similarity.id },
+          });
+
+          if (relatedEvidence && relatedEvidence.caseId !== evidence.caseId) {
+            correlations.push({
+              relatedEvidenceId: relatedEvidence.id,
+              caseId: relatedEvidence.caseId,
+              correlationType: 'text',
+              score: similarity.score,
+              details: {
+                sourceTitle: evidence.title,
+                relatedTitle: relatedEvidence.title,
+                textLength: textContent.length,
+              },
+            });
+          }
+        }
+      }
+
+      // Find image correlations
+      if (evidence.filePath && metadata?.fileProcessing?.mimetype?.startsWith('image/')) {
+        try {
+          const imageSimilarities = await this.findSimilarImages(evidence.filePath, {
             threshold,
             maxResults: 20,
           });
 
-          for (const similarity of textSimilarities) {
-            const relatedFile = await prisma.evidenceFile.findUnique({
+          for (const similarity of imageSimilarities) {
+            const relatedEvidence = await prisma.evidenceItem.findUnique({
               where: { id: similarity.id },
-              include: { evidence: true },
             });
 
-            if (relatedFile && relatedFile.evidence?.caseId !== evidence.caseId) {
+            if (relatedEvidence && relatedEvidence.caseId !== evidence.caseId) {
               correlations.push({
-                relatedEvidenceId: relatedFile.evidenceId,
-                caseId: relatedFile.evidence.caseId,
-                correlationType: 'text',
+                relatedEvidenceId: relatedEvidence.id,
+                caseId: relatedEvidence.caseId,
+                correlationType: 'image',
                 score: similarity.score,
                 details: {
-                  sourceFile: file.fileName,
-                  relatedFile: relatedFile.fileName,
-                  textLength: textContent.length,
+                  sourceTitle: evidence.title,
+                  relatedTitle: relatedEvidence.title,
                 },
               });
             }
           }
-        }
-
-        if (file.mimeType?.startsWith('image/') && file.filePath) {
-          try {
-            const imageSimilarities = await this.findSimilarImages(file.filePath, {
-              threshold,
-              maxResults: 20,
-            });
-
-            for (const similarity of imageSimilarities) {
-              const relatedFile = await prisma.evidenceFile.findUnique({
-                where: { id: similarity.id },
-                include: { evidence: true },
-              });
-
-              if (relatedFile && relatedFile.evidence?.caseId !== evidence.caseId) {
-                correlations.push({
-                  relatedEvidenceId: relatedFile.evidenceId,
-                  caseId: relatedFile.evidence.caseId,
-                  correlationType: 'image',
-                  score: similarity.score,
-                  details: {
-                    sourceFile: file.fileName,
-                    relatedFile: relatedFile.fileName,
-                  },
-                });
-              }
-            }
-          } catch (error) {
-            logger.debug('Could not process image for correlation', {
-              error: error instanceof Error ? error.message : String(error),
-              fileName: file.fileName,
-            });
-          }
+        } catch (error) {
+          logger.debug('Could not process image for correlation', {
+            error: error instanceof Error ? error.message : String(error),
+            evidenceId: evidence.id,
+          });
         }
       }
 
