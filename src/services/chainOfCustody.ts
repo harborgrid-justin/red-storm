@@ -126,7 +126,7 @@ export class ChainOfCustodyService {
         },
       };
 
-      this.emailTransporter = nodemailer.createTransporter(emailConfig);
+      this.emailTransporter = nodemailer.createTransport(emailConfig);
       logger.info('Email transporter initialized successfully');
     } catch (error) {
       logger.warn('Email transporter initialization failed', {

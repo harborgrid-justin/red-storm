@@ -1,7 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
-import ConnectRedis from 'connect-redis';
+import RedisStore from 'connect-redis';
 import { Server } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { config } from '@/config';
@@ -27,6 +27,8 @@ import userRoutes from '@/routes/users';
 import caseRoutes from '@/routes/cases';
 import evidenceRoutes from '@/routes/evidence';
 import evidenceFileRoutes from '@/routes/evidenceFiles';
+import workflowRoutes from '@/routes/workflows';
+import notificationRoutes from '@/routes/notifications';
 import healthRoutes from '@/routes/health';
 import graphqlRoutes from '@/routes/graphql';
 
@@ -62,9 +64,8 @@ export class Application {
     this.app.use(cookieParser());
 
     // Session configuration
-    const RedisStore = ConnectRedis(session) as any;
     this.app.use(session({
-      store: new (RedisStore as any)({ client: redis }),
+      store: new RedisStore({ client: redis }),
       secret: config.session.secret,
       resave: false,
       saveUninitialized: false,
@@ -109,6 +110,8 @@ export class Application {
     apiRouter.use('/cases', caseRoutes);
     apiRouter.use('/evidence', evidenceRoutes);
     apiRouter.use('/evidence-files', evidenceFileRoutes);
+    apiRouter.use('/workflows', workflowRoutes);
+    apiRouter.use('/notifications', notificationRoutes);
     
     // GraphQL endpoint
     apiRouter.use('/graphql', graphqlRoutes);

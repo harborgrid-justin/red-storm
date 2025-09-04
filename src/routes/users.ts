@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { z } from 'zod';
 import { AuthenticatedRequest } from '@/types';
 import { asyncHandler, sendSuccess, sendPaginatedSuccess, sendError } from '@/middleware/error';
 import { auth } from '@/middleware/auth';
@@ -19,7 +20,7 @@ router.get('/',
   validateQuery(commonSchemas.pagination.extend({
     search: commonSchemas.search.shape.q.optional(),
     role: commonSchemas.id.optional(),
-    isActive: commonSchemas.pagination.shape.page.optional().transform(val => val === '1' || val === 'true'),
+    isActive: z.string().optional().transform(val => val === '1' || val === 'true'),
   })),
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { page, limit, sortBy, sortOrder, search, role, isActive } = req.query as any;

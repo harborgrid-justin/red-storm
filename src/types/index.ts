@@ -46,6 +46,7 @@ export interface ApiResponse<T = any> {
     timestamp: string;
     version: string;
     correlationId?: string;
+    message?: string;
   };
 }
 
@@ -176,9 +177,16 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
+  public details?: Array<{
+    field: string;
+    message: string;
+    code: string;
+  }>;
+
   constructor(message: string, details?: any) {
     super(message, 400, 'VALIDATION_ERROR');
     this.name = 'ValidationError';
+    this.details = details;
   }
 }
 
