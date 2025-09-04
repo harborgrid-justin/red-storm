@@ -196,10 +196,12 @@ export default function EvidencePage() {
 
   const handleViewEvidence = useCallback((item: EvidenceItem) => {
     console.log('Viewing evidence:', item)
+    // Navigate to evidence detail page with multimedia viewer
+    window.location.href = `/evidence/${item.id}`
     addNotification({
       type: 'info',
       title: 'Opening Evidence',
-      message: `Opening ${item.name}`,
+      message: `Opening ${item.name} in multimedia viewer`,
     })
   }, [addNotification])
 
