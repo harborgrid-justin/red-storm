@@ -77,6 +77,13 @@ const envSchema = z.object({
   
   // WebSocket
   WEBSOCKET_CORS_ORIGIN: z.string().default('http://localhost:3001'),
+  
+  // Elasticsearch
+  ELASTICSEARCH_URL: z.string().default('http://localhost:9200'),
+  ELASTICSEARCH_USERNAME: z.string().optional(),
+  ELASTICSEARCH_PASSWORD: z.string().optional(),
+  ELASTICSEARCH_CA_CERT: z.string().optional(),
+  ELASTICSEARCH_INDEX_PREFIX: z.string().default('evidence'),
 });
 
 // Validate environment variables
@@ -175,6 +182,14 @@ export const config = {
   
   websocket: {
     corsOrigin: env.WEBSOCKET_CORS_ORIGIN,
+  },
+  
+  elasticsearch: {
+    url: env.ELASTICSEARCH_URL,
+    username: env.ELASTICSEARCH_USERNAME,
+    password: env.ELASTICSEARCH_PASSWORD,
+    caCert: env.ELASTICSEARCH_CA_CERT,
+    indexPrefix: env.ELASTICSEARCH_INDEX_PREFIX,
   },
 } as const;
 
