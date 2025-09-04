@@ -15,13 +15,15 @@ import {
   Clock,
   X,
   Save,
-  Star
+  Star,
+  Download,
+  MoreHorizontal
 } from 'lucide-react';
-import { CaseService } from '@/services/cases';
+import { SearchService, SearchResult as SearchResultType, SearchFilters } from '@/services/search';
 import Link from 'next/link';
 
 interface SearchResult {
-  type: 'case' | 'evidence';
+  type: 'case' | 'evidence' | 'document';
   id: string;
   title: string;
   subtitle: string;
@@ -30,6 +32,8 @@ interface SearchResult {
   priority?: string;
   createdAt: string;
   metadata: Record<string, any>;
+  score?: number;
+  highlights?: Record<string, string[]>;
 }
 
 interface SavedSearch {
@@ -57,7 +61,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
   
   // Filter states
   const [filters, setFilters] = useState({
-    type: 'all', // 'all', 'cases', 'evidence'
+    type: 'all', // 'all', 'case', 'evidence', 'document'
     status: '',
     priority: '',
     assignedTo: '',
@@ -71,6 +75,12 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
 
   // Debounced search
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  
+  // Export functionality
+  const [exporting, setExporting] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -91,48 +101,53 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
   const performSearch = useCallback(async (searchQuery: string) => {
     try {
       setLoading(true);
-      const searchResults: SearchResult[] = [];
+      
+      const searchParams = {
+        q: searchQuery,
+        type: filters.type === 'all' ? undefined : filters.type,
+        status: filters.status || undefined,
+        priority: filters.priority || undefined,
+        assignedTo: filters.assignedTo || undefined,
+        tags: filters.tags.length > 0 ? filters.tags.join(',') : undefined,
+        dateFrom: filters.dateRange.from || undefined,
+        dateTo: filters.dateRange.to || undefined,
+        evidenceType: filters.evidenceType || undefined,
+        size: 20,
+        highlight: true,
+        suggest: true,
+      };
 
-      // Search cases
-      if (filters.type === 'all' || filters.type === 'cases') {
-        const casesResponse = await CaseService.getCases({
-          search: searchQuery,
-          status: filters.status || undefined,
-          priority: filters.priority || undefined,
-          assignedToId: filters.assignedTo || undefined,
-          limit: 20,
-        });
-
-        const caseResults: SearchResult[] = casesResponse.items.map((case_: any) => ({
-          type: 'case' as const,
-          id: case_.id,
-          title: case_.title,
-          subtitle: `Case ${case_.caseNumber}`,
-          description: case_.description,
-          status: case_.status,
-          priority: case_.priority,
-          createdAt: case_.createdAt,
-          metadata: {
-            caseNumber: case_.caseNumber,
-            assignedTo: case_.assignedTo,
-            evidenceCount: case_.evidenceItems?.length || 0,
-            tags: case_.tags || [],
-          },
-        }));
-
-        searchResults.push(...caseResults);
-      }
-
-      // Search evidence (would need to implement evidence search API)
-      if (filters.type === 'all' || filters.type === 'evidence') {
-        // Placeholder for evidence search
-        // const evidenceResponse = await EvidenceService.search({ ... });
-      }
-
-      // Sort results by relevance/date
-      searchResults.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      const response = await SearchService.search(searchParams);
+      
+      const searchResults: SearchResult[] = response.results.map(result => ({
+        type: result.type,
+        id: result.id,
+        title: result.title,
+        subtitle: result.type === 'case' 
+          ? `Case ${result.metadata.caseNumber || result.id}` 
+          : result.type === 'evidence' 
+            ? `Evidence ${result.metadata.itemNumber || result.id}`
+            : `Document ${result.metadata.fileName || result.title}`,
+        description: result.description || result.content?.substring(0, 200) + '...',
+        status: result.status,
+        priority: result.priority,
+        createdAt: result.createdAt,
+        metadata: result.metadata,
+        score: result.score,
+        highlights: result.highlights,
+      }));
 
       setResults(searchResults);
+      
+      // Store search in history
+      if (searchQuery.trim()) {
+        const searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        const updatedHistory = [
+          searchQuery,
+          ...searchHistory.filter((h: string) => h !== searchQuery)
+        ].slice(0, 10);
+        localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
+      }
     } catch (error) {
       console.error('Search failed:', error);
       setResults([]);
@@ -186,11 +201,96 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
     setSavedSearches(saved);
+    
+    const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    setSearchHistory(history);
   }, []);
+
+  // Get search suggestions
+  const getSuggestions = async (text: string) => {
+    if (text.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const suggestionsResult = await SearchService.getSuggestions(text, 5);
+      setSuggestions(suggestionsResult);
+    } catch (error) {
+      console.error('Failed to get suggestions:', error);
+      setSuggestions([]);
+    }
+  };
+
+  // Handle input change with suggestions
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    if (value.trim()) {
+      getSuggestions(value);
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Export search results
+  const exportResults = async (format: 'csv' | 'excel' | 'pdf') => {
+    if (results.length === 0) {
+      alert('No results to export');
+      return;
+    }
+
+    try {
+      setExporting(true);
+      
+      const searchParams = {
+        q: debouncedQuery,
+        type: filters.type === 'all' ? undefined : filters.type,
+        status: filters.status || undefined,
+        priority: filters.priority || undefined,
+        assignedTo: filters.assignedTo || undefined,
+        tags: filters.tags.length > 0 ? filters.tags.join(',') : undefined,
+        dateFrom: filters.dateRange.from || undefined,
+        dateTo: filters.dateRange.to || undefined,
+        evidenceType: filters.evidenceType || undefined,
+        size: 1000, // Export more results
+        highlight: true,
+      };
+
+      const exportResult = await SearchService.exportSearchResults({
+        format,
+        includeMetadata: true,
+        includeHighlights: true,
+        searchQuery: searchParams,
+      });
+
+      // Download the file
+      const blob = await SearchService.downloadExport(exportResult.filename);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportResult.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      alert(`Exported ${exportResult.recordCount} results successfully`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const getTypeIcon = (result: SearchResult) => {
     if (result.type === 'case') {
       return <FileText className="w-5 h-5 text-blue-600" />;
+    }
+    
+    if (result.type === 'document') {
+      return <FileText className="w-5 h-5 text-purple-600" />;
     }
     
     // Evidence type icons
@@ -200,6 +300,19 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
       case 'VIDEO': return <Video className="w-5 h-5 text-purple-600" />;
       case 'DOCUMENT': return <FileText className="w-5 h-5 text-blue-600" />;
       default: return <Folder className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  const getResultLink = (result: SearchResult) => {
+    switch (result.type) {
+      case 'case':
+        return `/cases/${result.id}`;
+      case 'evidence':
+        return `/evidence/${result.id}`;
+      case 'document':
+        return `/evidence/${result.metadata.evidenceId || result.id}`;
+      default:
+        return '#';
     }
   };
 
@@ -220,10 +333,6 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
     );
   };
 
-  const getResultLink = (result: SearchResult) => {
-    return result.type === 'case' ? `/cases/${result.id}` : `/evidence/${result.id}`;
-  };
-
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-6">
@@ -240,9 +349,53 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
               <Input
                 placeholder="Search cases, evidence, documents..."
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 className="pl-10 pr-4"
               />
+              
+              {/* Search suggestions dropdown */}
+              {showSuggestions && (suggestions.length > 0 || searchHistory.length > 0) && (
+                <div className="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg z-10 mt-1">
+                  {suggestions.length > 0 && (
+                    <div className="p-2 border-b">
+                      <div className="text-xs text-gray-500 mb-1">Suggestions</div>
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            setQuery(suggestion);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {searchHistory.length > 0 && (
+                    <div className="p-2">
+                      <div className="text-xs text-gray-500 mb-1">Recent searches</div>
+                      {searchHistory.slice(0, 5).map((item, index) => (
+                        <div
+                          key={index}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm flex items-center"
+                          onClick={() => {
+                            setQuery(item);
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <Clock className="w-3 h-3 mr-2 text-gray-400" />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <Button
               variant="outline"
@@ -260,6 +413,36 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
               <Save className="w-4 h-4 mr-2" />
               Save
             </Button>
+            
+            {/* Export dropdown */}
+            {results.length > 0 && (
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  disabled={exporting}
+                  onClick={() => document.getElementById('export-menu')?.click()}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {exporting ? 'Exporting...' : 'Export'}
+                </Button>
+                
+                <select
+                  id="export-menu"
+                  className="absolute opacity-0 pointer-events-none"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      exportResults(e.target.value as 'csv' | 'excel' | 'pdf');
+                      e.target.value = '';
+                    }
+                  }}
+                >
+                  <option value="">Select format</option>
+                  <option value="csv">CSV</option>
+                  <option value="excel">Excel</option>
+                  <option value="pdf">PDF</option>
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Active filters display */}
@@ -300,8 +483,9 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
                   className="w-full p-2 border rounded"
                 >
                   <option value="all">All</option>
-                  <option value="cases">Cases</option>
+                  <option value="case">Cases</option>
                   <option value="evidence">Evidence</option>
+                  <option value="document">Documents</option>
                 </select>
               </div>
               
@@ -430,16 +614,43 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
                               {result.title}
                             </Link>
                             <p className="text-sm text-gray-600 mt-1">{result.subtitle}</p>
-                            {result.description && (
+                            
+                            {/* Show highlights if available */}
+                            {result.highlights && Object.keys(result.highlights).length > 0 && (
+                              <div className="mt-2">
+                                {Object.entries(result.highlights).map(([field, highlights]) => (
+                                  <div key={field} className="mb-1">
+                                    <div className="text-xs text-gray-500 capitalize">{field}:</div>
+                                    <div 
+                                      className="text-sm text-gray-700"
+                                      dangerouslySetInnerHTML={{ 
+                                        __html: highlights[0] || '' 
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {!result.highlights && result.description && (
                               <p className="text-sm text-gray-500 mt-2 line-clamp-2">
                                 {result.description}
                               </p>
                             )}
                           </div>
                           
-                          <div className="flex items-center gap-2 ml-4">
-                            <Badge variant="outline">{result.status}</Badge>
-                            {getPriorityBadge(result.priority)}
+                          <div className="flex flex-col items-end gap-2 ml-4">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{result.status}</Badge>
+                              {getPriorityBadge(result.priority)}
+                            </div>
+                            
+                            {/* Show relevance score */}
+                            {result.score && (
+                              <div className="text-xs text-gray-500">
+                                Relevance: {(result.score * 100).toFixed(1)}%
+                              </div>
+                            )}
                           </div>
                         </div>
                         
