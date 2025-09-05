@@ -16,13 +16,17 @@ import {
   Search,
   Bell,
   User,
-  Shield
+  Shield,
+  BarChart3,
+  FileOutput
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Cases', href: '/cases', icon: FolderOpen },
   { name: 'Evidence', href: '/evidence', icon: FileText },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3, permission: 'analytics:read' },
+  { name: 'Reports', href: '/reports', icon: FileOutput, permission: 'reports:read' },
   { name: 'Users', href: '/users', icon: Users, permission: 'users:read' },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
