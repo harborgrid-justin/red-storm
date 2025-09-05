@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full antialiased">
+      <body className="h-full antialiased cds--body cds--white">
         <QueryProvider>
           <AuthProvider>
             {children}

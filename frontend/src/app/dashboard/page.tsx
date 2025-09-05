@@ -6,16 +6,17 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { MainLayout } from '@/components/layout/main-layout'
 import { useAuth } from '@/hooks/useAuth'
 import { useWebSocket, useRealtimeUpdates } from '@/hooks/useWebSocket'
+import { Tag, Grid } from '@carbon/react'
 import { 
-  Users, 
+  UserMultiple, 
   FolderOpen, 
-  FileText, 
+  Document, 
   Activity,
   TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react'
+  Time,
+  CheckmarkFilled,
+  WarningFilled
+} from '@carbon/icons-react'
 import CaseService from '@/services/cases'
 import EvidenceService from '@/services/evidence'
 import UserService from '@/services/users'
@@ -85,44 +86,56 @@ export default function Dashboard() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      OPEN: 'bg-green-100 text-green-800',
-      CLOSED: 'bg-gray-100 text-gray-800',
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      ARCHIVED: 'bg-blue-100 text-blue-800',
-      COLLECTED: 'bg-green-100 text-green-800',
-      PROCESSING: 'bg-yellow-100 text-yellow-800',
-      ANALYZED: 'bg-blue-100 text-blue-800',
-      STORED: 'bg-gray-100 text-gray-800',
+  const getStatusTag = (status: string) => {
+    const statusConfig = {
+      OPEN: { type: 'green', label: 'Open' },
+      CLOSED: { type: 'gray', label: 'Closed' },
+      PENDING: { type: 'yellow', label: 'Pending' },
+      ARCHIVED: { type: 'blue', label: 'Archived' },
+      COLLECTED: { type: 'green', label: 'Collected' },
+      PROCESSING: { type: 'yellow', label: 'Processing' },
+      ANALYZED: { type: 'blue', label: 'Analyzed' },
+      STORED: { type: 'gray', label: 'Stored' },
     }
-    return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.CLOSED
+    return (
+      <Tag type={config.type as any} size="sm">
+        {config.label}
+      </Tag>
+    )
   }
 
-  const getPriorityBadge = (priority: string) => {
-    const badges = {
-      LOW: 'bg-gray-100 text-gray-800',
-      MEDIUM: 'bg-yellow-100 text-yellow-800',
-      HIGH: 'bg-orange-100 text-orange-800',
-      CRITICAL: 'bg-red-100 text-red-800',
+  const getPriorityTag = (priority: string) => {
+    const priorityConfig = {
+      LOW: { type: 'gray', label: 'Low' },
+      MEDIUM: { type: 'yellow', label: 'Medium' },
+      HIGH: { type: 'orange', label: 'High' },
+      CRITICAL: { type: 'red', label: 'Critical' },
     }
-    return badges[priority as keyof typeof badges] || 'bg-gray-100 text-gray-800'
+    const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.LOW
+    return (
+      <Tag type={config.type as any} size="sm">
+        {config.label}
+      </Tag>
+    )
   }
 
   return (
     <MainLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b pb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-2xl font-semibold" style={{ color: 'var(--cds-text-primary)' }}>
+              Dashboard
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: 'var(--cds-text-secondary)' }}>
               Welcome back, {user?.firstName} {user?.lastName}
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-sm text-gray-600">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm" style={{ color: 'var(--cds-text-secondary)' }}>
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
@@ -135,59 +148,65 @@ export default function Dashboard() {
         ) : (
           <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+            <Grid>
+              <Card className="mb-4">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Cases</CardTitle>
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                  <FolderOpen size={20} className="text-blue-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{liveStats?.totalCases || stats?.totalCases || 0}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-2xl font-bold" style={{ color: 'var(--cds-text-primary)' }}>
+                    {liveStats?.totalCases || stats?.totalCases || 0}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--cds-text-secondary)' }}>
                     {liveStats?.activeCases || stats?.activeCases || 0} active
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="mb-4">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Evidence Items</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <Document size={20} className="text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{liveStats?.totalEvidence || stats?.totalEvidence || 0}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-2xl font-bold" style={{ color: 'var(--cds-text-primary)' }}>
+                    {liveStats?.totalEvidence || stats?.totalEvidence || 0}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--cds-text-secondary)' }}>
                     {liveStats?.pendingEvidence || stats?.pendingEvidence || 0} processing
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="mb-4">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <UserMultiple size={20} className="text-purple-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{liveStats?.activeUsers || stats?.activeUsers || 0}</div>
-                  <p className="text-xs text-muted-foreground">
+                  <div className="text-2xl font-bold" style={{ color: 'var(--cds-text-primary)' }}>
+                    {liveStats?.activeUsers || stats?.activeUsers || 0}
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--cds-text-secondary)' }}>
                     of {liveStats?.totalUsers || stats?.totalUsers || 0} total
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="mb-4">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <Activity size={20} className="text-green-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">Operational</div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs" style={{ color: 'var(--cds-text-secondary)' }}>
                     All systems running
                   </p>
                 </CardContent>
               </Card>
-            </div>
+            </Grid>
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -200,18 +219,18 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {recentCases.map((case_) => (
-                      <div key={case_.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={case_.id} className="flex items-center justify-between p-3" style={{ backgroundColor: 'var(--cds-layer-01)', borderRadius: '4px' }}>
                         <div className="flex-1">
-                          <div className="font-medium">{case_.title}</div>
-                          <div className="text-sm text-gray-500">#{case_.caseNumber}</div>
+                          <div className="font-medium" style={{ color: 'var(--cds-text-primary)' }}>
+                            {case_.title}
+                          </div>
+                          <div className="text-sm" style={{ color: 'var(--cds-text-secondary)' }}>
+                            #{case_.caseNumber}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityBadge(case_.priority)}`}>
-                            {case_.priority}
-                          </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(case_.status)}`}>
-                            {case_.status}
-                          </span>
+                          {getPriorityTag(case_.priority)}
+                          {getStatusTag(case_.status)}
                         </div>
                       </div>
                     ))}
@@ -228,16 +247,20 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {recentEvidence.map((evidence) => (
-                      <div key={evidence.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div key={evidence.id} className="flex items-center justify-between p-3" style={{ backgroundColor: 'var(--cds-layer-01)', borderRadius: '4px' }}>
                         <div className="flex-1">
-                          <div className="font-medium">{evidence.title}</div>
-                          <div className="text-sm text-gray-500">#{evidence.itemNumber}</div>
+                          <div className="font-medium" style={{ color: 'var(--cds-text-primary)' }}>
+                            {evidence.title}
+                          </div>
+                          <div className="text-sm" style={{ color: 'var(--cds-text-secondary)' }}>
+                            #{evidence.itemNumber}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">{evidence.type}</span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(evidence.status)}`}>
-                            {evidence.status}
+                          <span className="text-xs" style={{ color: 'var(--cds-text-secondary)' }}>
+                            {evidence.type}
                           </span>
+                          {getStatusTag(evidence.status)}
                         </div>
                       </div>
                     ))}
