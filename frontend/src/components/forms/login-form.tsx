@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Shield } from 'lucide-react'
+import { Security } from '@carbon/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Checkbox, Link } from '@carbon/react'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 
@@ -22,6 +23,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
   
@@ -48,16 +50,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="cds--body cds--white min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: 'var(--cds-background)' }}>
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center">
-            <Shield className="h-12 w-12 text-blue-600" />
+            <Security size={48} className="text-blue-600" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
+          <h2 className="mt-6 text-3xl font-bold tracking-tight" style={{ color: 'var(--cds-text-primary)' }}>
             Evidence Management Platform
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm" style={{ color: 'var(--cds-text-secondary)' }}>
             Sign in to your account
           </p>
         </div>
@@ -72,63 +74,42 @@ export default function LoginPage() {
           <CardContent>
             <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <Input
-                    {...form.register('email')}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="Enter your email"
-                    className={form.formState.errors.email ? 'border-red-500' : ''}
-                  />
-                  {form.formState.errors.email && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  {...form.register('email')}
+                  id="email"
+                  labelText="Email address"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Enter your email"
+                  invalid={!!form.formState.errors.email}
+                  invalidText={form.formState.errors.email?.message}
+                />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="mt-1">
-                  <Input
-                    {...form.register('password')}
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    className={form.formState.errors.password ? 'border-red-500' : ''}
-                  />
-                  {form.formState.errors.password && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {form.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  {...form.register('password')}
+                  id="password"
+                  labelText="Password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  invalid={!!form.formState.errors.password}
+                  invalidText={form.formState.errors.password?.message}
+                />
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                    Remember me
-                  </label>
-                </div>
+                <Checkbox
+                  id="remember-me"
+                  labelText="Remember me"
+                  checked={rememberMe}
+                  onChange={(_, { checked }) => setRememberMe(checked)}
+                />
 
-                <div className="text-sm">
-                  <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                    Forgot your password?
-                  </a>
-                </div>
+                <Link href="#" className="text-sm">
+                  Forgot your password?
+                </Link>
               </div>
 
               <Button
