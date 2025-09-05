@@ -3,6 +3,8 @@ import { fileProcessingQueue } from '../config/redis';
 import { FileProcessingWorker } from '../services/backgroundJobs';
 import { prisma } from '../config/database';
 import { logger } from '../config/logger';
+import { analyticsService } from '../services/analyticsService';
+import { reportGenerationService } from '../services/reportGenerationService';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -58,6 +60,30 @@ export class ScheduledJobManager {
       await this.generateDailyReport();
     });
     this.jobs.set('daily-report', reportJob);
+
+    // ETL process for analytics data warehouse - runs every 4 hours
+    const etlJob = schedule.scheduleJob('analytics-etl', '0 */4 * * *', async () => {
+      await this.runAnalyticsETL();
+    });
+    this.jobs.set('analytics-etl', etlJob);
+
+    // Performance metrics collection - runs every 15 minutes
+    const metricsJob = schedule.scheduleJob('performance-metrics', '*/15 * * * *', async () => {
+      await this.collectPerformanceMetrics();
+    });
+    this.jobs.set('performance-metrics', metricsJob);
+
+    // Weekly analytics summary report - Mondays at 8 AM
+    const weeklyAnalyticsJob = schedule.scheduleJob('weekly-analytics', '0 8 * * 1', async () => {
+      await this.generateWeeklyAnalyticsReport();
+    });
+    this.jobs.set('weekly-analytics', weeklyAnalyticsJob);
+
+    // Data quality checks - daily at 4 AM
+    const dataQualityJob = schedule.scheduleJob('data-quality-check', '0 4 * * *', async () => {
+      await this.runDataQualityChecks();
+    });
+    this.jobs.set('data-quality-check', dataQualityJob);
 
     logger.info('Scheduled jobs initialized', {
       jobCount: this.jobs.size,
@@ -431,6 +457,221 @@ export class ScheduledJobManager {
       });
       return false;
     }
+  }
+
+  /**
+   * ETL process for analytics data warehouse
+   * Aggregates and processes data for faster analytics queries
+   */
+  private async runAnalyticsETL(): Promise<void> {
+    try {
+      logger.info('Starting analytics ETL process');
+
+      // Get current analytics data
+      const analytics = await analyticsService.getDashboardAnalytics();
+
+      // Store aggregated data for faster queries (would typically use materialized views)
+      const etlData = {
+        timestamp: new Date(),
+        totalCases: analytics.totalCases,
+        activeCases: analytics.activeCases,
+        closedCases: analytics.closedCases,
+        totalEvidence: analytics.totalEvidence,
+        averageResolutionTime: analytics.averageCaseResolutionTime,
+        activeUsers: analytics.userActivityStats.activeUsers,
+        processingRate: analytics.evidenceProcessingStats.totalProcessed,
+      };
+
+      // In a real implementation, this would be stored in a data warehouse table
+      logger.info('Analytics ETL completed', etlData);
+
+    } catch (error) {
+      logger.error('Analytics ETL process failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Collect system performance metrics
+   */
+  private async collectPerformanceMetrics(): Promise<void> {
+    try {
+      const metrics = await analyticsService.getPerformanceMetrics();
+      
+      // Store metrics for trending analysis
+      logger.info('Performance metrics collected', {
+        timestamp: metrics.timestamp,
+        activeUsers: metrics.activeUsers,
+        systemLoad: metrics.systemLoad,
+        storageUsed: metrics.storageUsed,
+      });
+
+      // In a real implementation, these would be stored in TimescaleDB for time-series analysis
+    } catch (error) {
+      logger.error('Performance metrics collection failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Generate weekly analytics summary report
+   */
+  private async generateWeeklyAnalyticsReport(): Promise<void> {
+    try {
+      logger.info('Generating weekly analytics report');
+
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+
+      // Generate analytics report
+      const report = await reportGenerationService.generateReport({
+        templateId: 'analytics-dashboard',
+        format: 'pdf',
+        dateRange: { from: startDate, to: endDate },
+      }, 'system');
+
+      logger.info('Weekly analytics report generated', {
+        reportId: report.id,
+        period: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
+      });
+
+      // In a real implementation, this could be emailed to administrators
+    } catch (error) {
+      logger.error('Weekly analytics report generation failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Run data quality checks
+   */
+  private async runDataQualityChecks(): Promise<void> {
+    try {
+      logger.info('Starting data quality checks');
+
+      const checks = await Promise.all([
+        this.checkOrphanedEvidence(),
+        this.checkIncompleteChainOfCustody(),
+        this.checkMissingMetadata(),
+        this.checkDataConsistency(),
+      ]);
+
+      const issues = checks.filter(check => !check.passed);
+      
+      if (issues.length > 0) {
+        logger.warn('Data quality issues detected', {
+          issueCount: issues.length,
+          issues: issues.map(i => ({ name: i.name, message: i.message })),
+        });
+      } else {
+        logger.info('Data quality checks passed');
+      }
+
+    } catch (error) {
+      logger.error('Data quality checks failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Check for orphaned evidence items
+   */
+  private async checkOrphanedEvidence(): Promise<{ name: string; passed: boolean; message: string }> {
+    const orphanedCount = await prisma.evidenceItem.count({
+      where: {
+        caseId: {
+          not: {
+            in: await prisma.case.findMany({ select: { id: true } }).then(cases => cases.map(c => c.id))
+          }
+        },
+      },
+    });
+
+    return {
+      name: 'orphaned_evidence',
+      passed: orphanedCount === 0,
+      message: orphanedCount > 0 ? `Found ${orphanedCount} orphaned evidence items` : 'No orphaned evidence found',
+    };
+  }
+
+  /**
+   * Check for incomplete chain of custody
+   */
+  private async checkIncompleteChainOfCustody(): Promise<{ name: string; passed: boolean; message: string }> {
+    const incompleteCount = await prisma.evidenceItem.count({
+      where: {
+        chainOfCustody: {
+          equals: {} as any, // Empty JSON object check
+        },
+      },
+    });
+
+    return {
+      name: 'incomplete_custody',
+      passed: incompleteCount === 0,
+      message: incompleteCount > 0 ? `Found ${incompleteCount} evidence items with incomplete chain of custody` : 'All evidence has complete chain of custody',
+    };
+  }
+
+  /**
+   * Check for missing metadata
+   */
+  private async checkMissingMetadata(): Promise<{ name: string; passed: boolean; message: string }> {
+    const missingMetadataCount = await prisma.evidenceItem.count({
+      where: {
+        OR: [
+          { title: { equals: '' } },
+          { description: { equals: '' } },
+        ],
+      },
+    });
+
+    return {
+      name: 'missing_metadata',
+      passed: missingMetadataCount === 0,
+      message: missingMetadataCount > 0 ? `Found ${missingMetadataCount} evidence items with missing metadata` : 'All evidence has complete metadata',
+    };
+  }
+
+  /**
+   * Check data consistency
+   */
+  private async checkDataConsistency(): Promise<{ name: string; passed: boolean; message: string }> {
+    // Check for cases without any evidence
+    const casesWithoutEvidence = await prisma.case.count({
+      where: {
+        evidenceItems: {
+          none: {},
+        },
+      },
+    });
+
+    // Check for users without roles
+    const usersWithoutRoles = await prisma.user.count({
+      where: {
+        roles: {
+          none: {},
+        },
+      },
+    });
+
+    const inconsistencies: string[] = [];
+    if (casesWithoutEvidence > 0) {
+      inconsistencies.push(`${casesWithoutEvidence} cases without evidence`);
+    }
+    if (usersWithoutRoles > 0) {
+      inconsistencies.push(`${usersWithoutRoles} users without roles`);
+    }
+
+    return {
+      name: 'data_consistency',
+      passed: inconsistencies.length === 0,
+      message: inconsistencies.length > 0 ? `Inconsistencies found: ${inconsistencies.join(', ')}` : 'Data consistency checks passed',
+    };
   }
 }
 

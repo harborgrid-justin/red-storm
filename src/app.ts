@@ -33,6 +33,8 @@ import notificationRoutes from '@/routes/notifications';
 import searchRoutes from '@/routes/search';
 import healthRoutes from '@/routes/health';
 import graphqlRoutes from '@/routes/graphql';
+import analyticsRoutes from '@/routes/analytics';
+import reportsRoutes from '@/routes/reports';
 
 // Service imports
 import { fileProcessingWorker } from '@/services/backgroundJobs';
@@ -115,6 +117,8 @@ export class Application {
     apiRouter.use('/workflows', workflowRoutes);
     apiRouter.use('/notifications', notificationRoutes);
     apiRouter.use('/search', searchRoutes);
+    apiRouter.use('/analytics', analyticsRoutes);
+    apiRouter.use('/reports', reportsRoutes);
     
     // GraphQL endpoint
     apiRouter.use('/graphql', graphqlRoutes);
@@ -137,6 +141,8 @@ export class Application {
           evidence: `/api/${config.apiVersion}/evidence`,
           evidenceFiles: `/api/${config.apiVersion}/evidence-files`,
           search: `/api/${config.apiVersion}/search`,
+          analytics: `/api/${config.apiVersion}/analytics`,
+          reports: `/api/${config.apiVersion}/reports`,
           graphql: `/api/${config.apiVersion}/graphql`,
         },
       });
