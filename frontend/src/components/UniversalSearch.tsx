@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Search,
   Filter,
@@ -78,6 +79,7 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
   
   // Export functionality
   const [exporting, setExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'pdf' | ''>('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -416,31 +418,23 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
             
             {/* Export dropdown */}
             {results.length > 0 && (
-              <div className="relative">
-                <Button
-                  variant="outline"
-                  disabled={exporting}
-                  onClick={() => document.getElementById('export-menu')?.click()}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {exporting ? 'Exporting...' : 'Export'}
-                </Button>
-                
-                <select
-                  id="export-menu"
-                  className="absolute opacity-0 pointer-events-none"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      exportResults(e.target.value as 'csv' | 'excel' | 'pdf');
-                      e.target.value = '';
-                    }
-                  }}
-                >
-                  <option value="">Select format</option>
-                  <option value="csv">CSV</option>
-                  <option value="excel">Excel</option>
-                  <option value="pdf">PDF</option>
-                </select>
+              <div className="flex items-center gap-2">
+                <Select value={exportFormat} onValueChange={(value) => {
+                  setExportFormat(value as 'csv' | 'excel' | 'pdf' | '');
+                  if (value) {
+                    exportResults(value as 'csv' | 'excel' | 'pdf');
+                    setExportFormat(''); // Reset after export
+                  }
+                }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Export" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="csv">Export CSV</SelectItem>
+                    <SelectItem value="excel">Export Excel</SelectItem>
+                    <SelectItem value="pdf">Export PDF</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
@@ -477,45 +471,48 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
-                <select
-                  value={filters.type}
-                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="all">All</option>
-                  <option value="case">Cases</option>
-                  <option value="evidence">Evidence</option>
-                  <option value="document">Documents</option>
-                </select>
+                <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="case">Cases</SelectItem>
+                    <SelectItem value="evidence">Evidence</SelectItem>
+                    <SelectItem value="document">Documents</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Any</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="CLOSED">Closed</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
+                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Any status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Any</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="CLOSED">Closed</SelectItem>
+                    <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
                 <label className="block text-sm font-medium mb-1">Priority</label>
-                <select
-                  value={filters.priority}
-                  onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Any</option>
-                  <option value="CRITICAL">Critical</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
+                <Select value={filters.priority} onValueChange={(value) => setFilters(prev => ({ ...prev, priority: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Any priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Any</SelectItem>
+                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="LOW">Low</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>

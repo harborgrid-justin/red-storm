@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Plus, 
   Calendar, 
@@ -447,29 +448,31 @@ const TaskManagement: React.FC<TaskManagementProps> = ({ caseId }) => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
-                <select
-                  value={newTaskForm.type}
-                  onChange={(e) => setNewTaskForm(prev => ({ ...prev, type: e.target.value as any }))}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="MANUAL">Manual</option>
-                  <option value="APPROVAL">Approval</option>
-                  <option value="REVIEW">Review</option>
-                  <option value="DEADLINE">Deadline</option>
-                </select>
+                <Select value={newTaskForm.type} onValueChange={(value) => setNewTaskForm(prev => ({ ...prev, type: value as any }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MANUAL">Manual</SelectItem>
+                    <SelectItem value="APPROVAL">Approval</SelectItem>
+                    <SelectItem value="REVIEW">Review</SelectItem>
+                    <SelectItem value="DEADLINE">Deadline</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Priority</label>
-                <select
-                  value={newTaskForm.priority}
-                  onChange={(e) => setNewTaskForm(prev => ({ ...prev, priority: e.target.value as any }))}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
+                <Select value={newTaskForm.priority} onValueChange={(value) => setNewTaskForm(prev => ({ ...prev, priority: value as any }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                    <SelectItem value="CRITICAL">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Due Date</label>
