@@ -78,7 +78,6 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   
   // Export functionality
-  const [exporting, setExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'pdf' | ''>('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -243,7 +242,6 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
     }
 
     try {
-      setExporting(true);
       
       const searchParams = {
         q: debouncedQuery,
@@ -281,8 +279,6 @@ const UniversalSearch: React.FC<UniversalSearchProps> = ({
     } catch (error) {
       console.error('Export failed:', error);
       alert('Export failed. Please try again.');
-    } finally {
-      setExporting(false);
     }
   };
 
