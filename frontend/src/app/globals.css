@@ -112,12 +112,95 @@ body {
   background-color: hsl(var(--background));
 }
 
+/* Carbon Design System CSS custom properties */
+:root {
+  /* Carbon text tokens */
+  --cds-text-primary: hsl(var(--foreground));
+  --cds-text-secondary: hsl(var(--muted-foreground));
+  --cds-text-tertiary: hsl(var(--muted-foreground));
+  --cds-text-placeholder: hsl(var(--muted-foreground));
+  
+  /* Carbon layer tokens */
+  --cds-layer-01: hsl(var(--card));
+  --cds-layer-02: hsl(var(--muted));
+  --cds-layer-03: hsl(var(--accent));
+  
+  /* Carbon field tokens */
+  --cds-field-01: hsl(var(--input));
+  --cds-field-02: hsl(var(--background));
+  
+  /* Carbon border tokens */
+  --cds-border-subtle-01: hsl(var(--border));
+  --cds-border-strong-01: hsl(var(--foreground));
+  
+  /* Carbon interactive tokens */
+  --cds-interactive-01: hsl(var(--primary));
+  --cds-interactive-02: hsl(var(--secondary));
+  --cds-interactive-03: hsl(var(--primary));
+  --cds-interactive-04: hsl(var(--primary));
+}
+
+.dark {
+  /* Carbon text tokens for dark theme */
+  --cds-text-primary: hsl(var(--foreground));
+  --cds-text-secondary: hsl(var(--muted-foreground));
+  --cds-text-tertiary: hsl(var(--muted-foreground));
+  --cds-text-placeholder: hsl(var(--muted-foreground));
+  
+  /* Carbon layer tokens for dark theme */
+  --cds-layer-01: hsl(var(--card));
+  --cds-layer-02: hsl(var(--muted));
+  --cds-layer-03: hsl(var(--accent));
+  
+  /* Carbon field tokens for dark theme */
+  --cds-field-01: hsl(var(--input));
+  --cds-field-02: hsl(var(--background));
+  
+  /* Carbon border tokens for dark theme */
+  --cds-border-subtle-01: hsl(var(--border));
+  --cds-border-strong-01: hsl(var(--foreground));
+  
+  /* Carbon interactive tokens for dark theme */
+  --cds-interactive-01: hsl(var(--primary));
+  --cds-interactive-02: hsl(var(--secondary));
+  --cds-interactive-03: hsl(var(--primary));
+  --cds-interactive-04: hsl(var(--primary));
+}
+
 /* Override Carbon's default focus ring to match our design tokens */
 .cds--btn:focus,
 .cds--text-input:focus,
 .cds--select-input:focus {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+/* Fix font loading issues by overriding Carbon's font declarations */
+.cds--body,
+.cds--text,
+.cds--type-body-01,
+.cds--type-body-02,
+.cds--type-caption-01,
+.cds--type-caption-02,
+.cds--type-label-01,
+.cds--type-label-02,
+.cds--type-helper-text-01,
+.cds--type-helper-text-02,
+.cds--type-legal-01,
+.cds--type-legal-02,
+.cds--type-code-01,
+.cds--type-code-02 {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+}
+
+/* Ensure proper Carbon component styling */
+.cds--tag {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.cds--header,
+.cds--side-nav {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
 /* Custom scrollbar styles */
