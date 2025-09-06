@@ -76,7 +76,14 @@ export default function ReportsPage() {
       setGenerating(selectedTemplate)
       setError(null)
 
-      const requestData: any = {
+      const requestData: {
+        templateId: string;
+        format: string;
+        dateRange?: {
+          from: string;
+          to: string;
+        };
+      } = {
         templateId: selectedTemplate,
         format: selectedFormat,
       }
@@ -132,7 +139,11 @@ export default function ReportsPage() {
           return
       }
 
-      const params: any = { format: 'pdf' }
+      const params: {
+        format: string;
+        from?: string;
+        to?: string;
+      } = { format: 'pdf' }
       if (customDateRange) {
         params.from = customDateRange.from.toISOString()
         params.to = customDateRange.to.toISOString()

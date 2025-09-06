@@ -88,18 +88,18 @@ export default function Dashboard() {
 
   const getStatusTag = (status: string) => {
     const statusConfig = {
-      OPEN: { type: 'green', label: 'Open' },
-      CLOSED: { type: 'gray', label: 'Closed' },
-      PENDING: { type: 'yellow', label: 'Pending' },
-      ARCHIVED: { type: 'blue', label: 'Archived' },
-      COLLECTED: { type: 'green', label: 'Collected' },
-      PROCESSING: { type: 'yellow', label: 'Processing' },
-      ANALYZED: { type: 'blue', label: 'Analyzed' },
-      STORED: { type: 'gray', label: 'Stored' },
+      OPEN: { type: 'green' as const, label: 'Open' },
+      CLOSED: { type: 'gray' as const, label: 'Closed' },
+      PENDING: { type: 'yellow' as const, label: 'Pending' },
+      ARCHIVED: { type: 'blue' as const, label: 'Archived' },
+      COLLECTED: { type: 'green' as const, label: 'Collected' },
+      PROCESSING: { type: 'yellow' as const, label: 'Processing' },
+      ANALYZED: { type: 'blue' as const, label: 'Analyzed' },
+      STORED: { type: 'gray' as const, label: 'Stored' },
     }
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.CLOSED
     return (
-      <Tag type={config.type as any} size="sm">
+      <Tag type={config.type} size="sm">
         {config.label}
       </Tag>
     )
@@ -107,14 +107,14 @@ export default function Dashboard() {
 
   const getPriorityTag = (priority: string) => {
     const priorityConfig = {
-      LOW: { type: 'gray', label: 'Low' },
-      MEDIUM: { type: 'yellow', label: 'Medium' },
-      HIGH: { type: 'orange', label: 'High' },
-      CRITICAL: { type: 'red', label: 'Critical' },
+      LOW: { type: 'gray' as const, label: 'Low' },
+      MEDIUM: { type: 'yellow' as const, label: 'Medium' },
+      HIGH: { type: 'orange' as const, label: 'High' },
+      CRITICAL: { type: 'red' as const, label: 'Critical' },
     }
     const config = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.LOW
     return (
-      <Tag type={config.type as any} size="sm">
+      <Tag type={config.type} size="sm">
         {config.label}
       </Tag>
     )
